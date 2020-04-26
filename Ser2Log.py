@@ -34,25 +34,50 @@ def get_args():
 
    parser.add_argument("-T","--Tell", action='store_true',help="Tell the settings before starting")
 
+   parser.add_argument("--Seven","-7", action='store_true',default=False,help="Force data stream to be 7 bit ASCII")
+
    args = parser.parse_args()
 
    if args.Tell:
       print ("Port: {}".format(args.port))
       print ("Baud: {}".format(args.baud))
+      print ("Seven Bit: {}".format(args.Seven))
 
-   return(args.port, args.baud)
+   return(args.port, args.baud,args.Seven)
 
 def main():
 
-   (port,baud)=get_args()
-   logger.info('Processing started')
+   (port,baud,seven)=get_args()
+   logger.info('Processing started: {} @ {}. Seven Bit: {}'.format(port,baud,seven))
    comm=serial.Serial(port=port,baudrate=baud,timeout=1)
    while True:
       line=comm.readline().strip()
-      line=line.decode("cp1252")
+      org_line=line
+      if seven:
+         line=bytearray(line)
+         index=0
+         while index < len(line):
+            if  (line[index]<32) or (line[index] > 127):
+               line[index]=ord('.')
+            index+=1
+         line=line.decode() #Decode in UTF by default, if it fails try CP437
+      else:
+         try:
+            line=line.decode() #Decode in UTF by default, if it fails try CP437
+         except:
+            try:
+               line=line.decode("cp437")
+            except:
+               line="Decode failed"
+
       if line != '':
-         print (line)
-         logger.info(line)
+#         print (line)
+#         print (org_line)
+         if seven:
+            logger.info(line)
+         else:
+            logger.info(line)
+            logger.info(org_line)
 
 if __name__ == "__main__":
 #    print(sys.argv)
